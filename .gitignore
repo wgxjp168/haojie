@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+dist/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime data (NOT the storage/ python package — keep its __init__.py, base.py tracked)
+/logs/
+*.log
+/cache_data/
+/test_storage/
+test.db
+*.sqlite
+*.sqlite3
+# Ignore contents of local runtime storage if the user configured it at ./storage,
+# but keep the python package files tracked via negation.
+/storage/inputs/
+
+# OS
+.DS_Store
+Thumbs.db

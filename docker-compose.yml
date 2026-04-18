@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  app:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: "false"
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+      APP_REDIS_URL: redis://redis:6379/0
+      APP_STORAGE_BACKEND: ${APP_STORAGE_BACKEND:-local}
+      APP_STORAGE_LOCAL_PATH: /app/storage
+      APP_JWT_SECRET_KEY: ${APP_JWT_SECRET_KEY:?set APP_JWT_SECRET_KEY in .env}
+      APP_API_KEY_REQUIRED: ${APP_API_KEY_REQUIRED:-false}
+      APP_API_KEYS: ${APP_API_KEYS:-}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-*}
+      APP_SPEECH_PROVIDER: ${APP_SPEECH_PROVIDER:-local}
+      APP_AZURE_SPEECH_KEY: ${APP_AZURE_SPEECH_KEY:-}
+      APP_AZURE_SPEECH_REGION: ${APP_AZURE_SPEECH_REGION:-}
+      APP_IMAGE_RECOGNITION_PROVIDER: ${APP_IMAGE_RECOGNITION_PROVIDER:-local}
+      APP_AZURE_CV_ENDPOINT: ${APP_AZURE_CV_ENDPOINT:-}
+      APP_AZURE_CV_KEY: ${APP_AZURE_CV_KEY:-}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - app_storage:/app/storage
+      - app_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  redis_data:
+  app_storage:
+  app_logs:
