@@ -50,6 +50,47 @@ services:
       retries: 3
       start_period: 20s
 
+  gateway:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    environment:
+      GW_ENV: ${GW_ENV:-production}
+      GW_LOG_LEVEL: ${GW_LOG_LEVEL:-INFO}
+      GW_REDIS_URL: redis://redis:6379/1
+      GW_UPSTREAM_BASE_URL: http://app:8000
+      GW_JWT_SECRET_KEY: ${GW_JWT_SECRET_KEY:?set GW_JWT_SECRET_KEY in .env}
+      GW_CORS_ORIGINS: ${GW_CORS_ORIGINS:-*}
+      GW_API_KEYS: ${GW_API_KEYS:-}
+      GW_API_KEY_REQUIRED: ${GW_API_KEY_REQUIRED:-false}
+    ports:
+      - "${GW_PORT:-8001}:8001"
+    command: [
+      "gunicorn", "gateway.main:app",
+      "--worker-class", "uvicorn.workers.UvicornWorker",
+      "--workers", "4",
+      "--bind", "0.0.0.0:8001",
+      "--timeout", "60",
+      "--graceful-timeout", "30",
+      "--keep-alive", "5",
+      "--max-requests", "10000",
+      "--max-requests-jitter", "1000",
+      "--access-logfile", "-",
+      "--error-logfile", "-"
+    ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
 volumes:
   redis_data:
   app_storage:

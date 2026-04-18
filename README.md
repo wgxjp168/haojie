@@ -1,13 +1,20 @@
-# ILBuyAI - Multi-Modal Input Module (Part 1/10)
+# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2)
 
-Production-grade multi-modal user input processing service for the ILBuyAI intelligent
-procurement decision system. Accepts text, image, link, and voice input from B2B
-purchasers and B2C consumers, normalizes it, and emits a structured payload consumed
-by the downstream AI decision hub.
+Production-grade services for the ILBuyAI intelligent procurement decision
+system.
+
+* **Part 1 (`api.main:app`, port 8000)** — Multi-modal input processor.
+  Accepts text, image, link, and voice input from B2B purchasers and B2C
+  consumers, normalizes it, and emits a structured payload consumed by the
+  downstream AI decision hub.
+* **Part 2 (`gateway.main:app`, port 8001)** — Access/gateway layer in
+  front of Part 1. Terminates auth (JWT + API keys), enforces RBAC,
+  per-user-type rate limiting, circuit breaking, and hosts the WebSocket
+  hub. Forwards authorized requests to Part 1 via `/api/v1/*`.
 
 ## Overview
 
-This is **Part 1** of the ILBuyAI system. It exposes:
+Part 1 exposes:
 
 - REST endpoints for each input modality and a batch endpoint
 - Session and user-profile-aware processing

@@ -9,7 +9,7 @@ description = "Multi-modal input processing service for ILBuyAI (Part 1/10)"
 requires-python = ">=3.10"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "gateway_tests"]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -23,6 +23,7 @@ source = [
     "config",
     "core",
     "entities",
+    "gateway",
     "managers",
     "processors",
     "services",
