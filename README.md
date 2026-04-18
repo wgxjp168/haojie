@@ -1,4 +1,4 @@
-# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2)
+# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1)
 
 Production-grade services for the ILBuyAI intelligent procurement decision
 system.
@@ -11,6 +11,29 @@ system.
   front of Part 1. Terminates auth (JWT + API keys), enforces RBAC,
   per-user-type rate limiting, circuit breaking, and hosts the WebSocket
   hub. Forwards authorized requests to Part 1 via `/api/v1/*`.
+* **Part 3.1 (`intent.main:app`, port 8002)** — Intent recognition service,
+  first stage of the AI Decision Hub. Classifies normalized B2B/B2C
+  procurement queries into a 20-class taxonomy (search, compare,
+  inquire-price, check-stock, request-quote, bulk-order, track-order, …).
+  Supports `rules` / `transformer` / `ensemble` backends with a
+  deterministic rules fallback; ships with two-tier (memory + Redis)
+  caching, a circuit breaker around the transformer, and Prometheus metrics
+  on a dedicated registry.
+
+### Part 3.1 endpoints
+
+| Method | Path                              | Description                        |
+|--------|-----------------------------------|------------------------------------|
+| POST   | `/api/v1/intents/predict`         | Classify one text                  |
+| POST   | `/api/v1/intents/predict/batch`   | Classify a batch of texts          |
+| GET    | `/api/v1/intents`                 | Dump the intent taxonomy           |
+| GET    | `/api/v1/intents/health`          | Detailed intent-service health     |
+| GET    | `/health`, `/metrics`             | Root health + Prometheus metrics   |
+
+The transformer backend is **optional** — without `torch`/`transformers`
+installed the service still runs (rules-only) so deployments can light it
+up incrementally. Config is env-driven with prefix `INTENT_` (see
+`.env.example`).
 
 ## Overview
 

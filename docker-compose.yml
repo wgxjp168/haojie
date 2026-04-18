@@ -91,6 +91,45 @@ services:
       retries: 3
       start_period: 20s
 
+  intent:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      INTENT_ENV: ${INTENT_ENV:-production}
+      INTENT_LOG_LEVEL: ${INTENT_LOG_LEVEL:-INFO}
+      INTENT_REDIS_URL: redis://redis:6379/2
+      INTENT_BACKEND: ${INTENT_BACKEND:-rules}
+      INTENT_MODEL_NAME_OR_PATH: ${INTENT_MODEL_NAME_OR_PATH:-bert-base-multilingual-cased}
+      INTENT_MODEL_DEVICE: ${INTENT_MODEL_DEVICE:-cpu}
+      INTENT_PRELOAD_MODEL: ${INTENT_PRELOAD_MODEL:-false}
+      INTENT_ALLOW_RULES_FALLBACK: ${INTENT_ALLOW_RULES_FALLBACK:-true}
+      INTENT_API_KEY_REQUIRED: ${INTENT_API_KEY_REQUIRED:-false}
+      INTENT_API_KEYS: ${INTENT_API_KEYS:-}
+      INTENT_CORS_ORIGINS: ${INTENT_CORS_ORIGINS:-*}
+    ports:
+      - "${INTENT_PORT:-8002}:8002"
+    command: [
+      "gunicorn", "intent.main:app",
+      "--worker-class", "uvicorn.workers.UvicornWorker",
+      "--workers", "2",
+      "--bind", "0.0.0.0:8002",
+      "--timeout", "60",
+      "--graceful-timeout", "30",
+      "--access-logfile", "-",
+      "--error-logfile", "-"
+    ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
 volumes:
   redis_data:
   app_storage:
