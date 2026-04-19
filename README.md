@@ -1,4 +1,4 @@
-# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1) + Decision Engine (Part 3.2) + LLM Service (Part 3.3) + Report Service (Part 3.4)
+# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1) + Decision Engine (Part 3.2) + LLM Service (Part 3.3) + Report Service (Part 3.4) + Decision Hub (Part 3 orchestrator)
 
 Production-grade services for the ILBuyAI intelligent procurement decision
 system.
@@ -48,6 +48,30 @@ system.
   `boto3`). Ships with two-tier caching, per-backend circuit breakers,
   and an isolated Prometheus registry. Zero external template
   dependencies (no Jinja2 required).
+* **Part 3 Hub (`hub.main:app`, port 8006)** — AI Decision Hub
+  orchestrator that wires Parts 3.1/3.2/3.3/3.4 into one pipeline. A
+  single request (``POST /api/v1/hub/pipeline``) runs
+  ``intent → decision → [llm] → report`` sequentially, feeding each
+  stage's output into the next. Every stage call goes through a
+  **dual-mode client**: ``embedded`` (in-process ``Service`` object —
+  zero-network, ideal for monolithic deployments and tests) or
+  ``http`` (remote FastAPI via ``httpx`` with retries, exponential
+  backoff, and per-stage circuit breaker). Exposes an isolated
+  Prometheus registry with per-stage latency/retry/circuit metrics.
+
+### Part 3 Hub endpoints
+
+| Method | Path                                       | Description                               |
+|--------|--------------------------------------------|-------------------------------------------|
+| POST   | `/api/v1/hub/pipeline`                     | Run intent → decision → [llm] → report    |
+| POST   | `/api/v1/hub/pipeline/batch`               | Batch pipeline runs (concurrent)          |
+| GET    | `/api/v1/hub/health`                       | Aggregate downstream-service health       |
+| GET    | `/health`, `/metrics`                      | Root health + Prometheus metrics          |
+
+The hub is safe to start with any subset of downstreams available —
+failed stages are reported as ``failed`` or ``skipped`` in the
+response, and the overall status degrades gracefully to ``partial``.
+Config is env-driven with prefix `HUB_` (see `.env.example`).
 
 ### Part 3.1 endpoints
 
@@ -221,6 +245,7 @@ intent/          Part 3.1 intent recognition service
 decision/        Part 3.2 decision engine
 llm/             Part 3.3 LLM service (multi-provider router)
 report/          Part 3.4 report service (renderers + storage)
+hub/             Part 3 hub orchestrator (dual-mode clients + pipeline)
 managers/        Orchestration (input manager, session manager)
 processors/      Per-modality input processors
 services/        External service clients (speech, vision)
@@ -231,5 +256,6 @@ intent_tests/    Part 3.1 unit tests
 decision_tests/  Part 3.2 unit tests
 llm_tests/       Part 3.3 unit tests
 report_tests/    Part 3.4 unit tests
+hub_tests/       Part 3 hub integration + client tests
 deploy/          Nginx, docker-entrypoint
 ```

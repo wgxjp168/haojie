@@ -263,6 +263,64 @@ services:
       retries: 3
       start_period: 20s
 
+  hub:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    depends_on:
+      intent:
+        condition: service_healthy
+      decision:
+        condition: service_healthy
+      llm:
+        condition: service_healthy
+      report:
+        condition: service_healthy
+    environment:
+      HUB_ENV: ${HUB_ENV:-production}
+      HUB_LOG_LEVEL: ${HUB_LOG_LEVEL:-INFO}
+      # In the compose topology every downstream is a peer container, so
+      # the hub uses http mode with service DNS for base URLs.
+      HUB_INTENT_MODE: ${HUB_INTENT_MODE:-http}
+      HUB_DECISION_MODE: ${HUB_DECISION_MODE:-http}
+      HUB_LLM_MODE: ${HUB_LLM_MODE:-http}
+      HUB_REPORT_MODE: ${HUB_REPORT_MODE:-http}
+      HUB_INTENT_BASE_URL: http://intent:8002
+      HUB_DECISION_BASE_URL: http://decision:8003
+      HUB_LLM_BASE_URL: http://llm:8004
+      HUB_REPORT_BASE_URL: http://report:8005
+      HUB_DEFAULT_LANGUAGE: ${HUB_DEFAULT_LANGUAGE:-zh-CN}
+      HUB_DEFAULT_USER_TYPE: ${HUB_DEFAULT_USER_TYPE:-b2c}
+      HUB_DEFAULT_REPORT_FORMAT: ${HUB_DEFAULT_REPORT_FORMAT:-markdown}
+      HUB_DEFAULT_REPORT_AUDIENCE: ${HUB_DEFAULT_REPORT_AUDIENCE:-technical}
+      HUB_PIPELINE_TIMEOUT_SECONDS: ${HUB_PIPELINE_TIMEOUT_SECONDS:-60}
+      HUB_HTTP_MAX_RETRIES: ${HUB_HTTP_MAX_RETRIES:-2}
+      HUB_CB_FAILURE_THRESHOLD: ${HUB_CB_FAILURE_THRESHOLD:-5}
+      HUB_CB_RECOVERY_SECONDS: ${HUB_CB_RECOVERY_SECONDS:-30}
+      HUB_DOWNSTREAM_API_KEY: ${HUB_DOWNSTREAM_API_KEY:-}
+      HUB_API_KEY_REQUIRED: ${HUB_API_KEY_REQUIRED:-false}
+      HUB_API_KEYS: ${HUB_API_KEYS:-}
+      HUB_CORS_ORIGINS: ${HUB_CORS_ORIGINS:-*}
+    ports:
+      - "${HUB_PORT:-8006}:8006"
+    command: [
+      "gunicorn", "hub.main:app",
+      "--worker-class", "uvicorn.workers.UvicornWorker",
+      "--workers", "2",
+      "--bind", "0.0.0.0:8006",
+      "--timeout", "120",
+      "--graceful-timeout", "30",
+      "--access-logfile", "-",
+      "--error-logfile", "-"
+    ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
 volumes:
   redis_data:
   app_storage:
