@@ -43,3 +43,10 @@ pytest-cov==5.0.0
 # torch==2.4.1
 # transformers==4.45.2
 # sentencepiece==0.2.0
+
+# --- Part 3.2 decision engine: optional ML strategy ----------------------
+# Decision engine ships with a zero-dep ``dummy`` model. To use a trained
+# scikit-learn classifier, install the extras below and set
+# DECISION_ML_MODEL_KIND=sklearn + DECISION_ML_MODEL_PATH=/path/to/model.joblib
+# scikit-learn==1.5.2
+# joblib==1.4.2

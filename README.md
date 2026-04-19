@@ -1,4 +1,4 @@
-# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1)
+# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1) + Decision Engine (Part 3.2)
 
 Production-grade services for the ILBuyAI intelligent procurement decision
 system.
@@ -19,6 +19,15 @@ system.
   deterministic rules fallback; ships with two-tier (memory + Redis)
   caching, a circuit breaker around the transformer, and Prometheus metrics
   on a dedicated registry.
+* **Part 3.2 (`decision.main:app`, port 8003)** — Decision engine, second
+  stage of the AI Decision Hub. Consumes a recognised intent (Part 3.1)
+  plus buyer/product/order context and emits a ranked, audited
+  procurement decision (e.g. `approve_purchase`, `request_quote`,
+  `defer_decision`) drawn from a 19-action catalog. Supports
+  `rules` / `ml` / `ensemble` strategies with a deterministic rules
+  fallback; ships with two-tier caching, a circuit breaker around the
+  ML strategy, policy guardrails (auto-approve ceiling and human-review
+  threshold), and an isolated Prometheus registry.
 
 ### Part 3.1 endpoints
 
@@ -33,6 +42,24 @@ system.
 The transformer backend is **optional** — without `torch`/`transformers`
 installed the service still runs (rules-only) so deployments can light it
 up incrementally. Config is env-driven with prefix `INTENT_` (see
+`.env.example`).
+
+### Part 3.2 endpoints
+
+| Method | Path                                    | Description                              |
+|--------|-----------------------------------------|------------------------------------------|
+| POST   | `/api/v1/decisions/evaluate`            | Evaluate one decision request            |
+| POST   | `/api/v1/decisions/evaluate/batch`      | Evaluate a batch of decision requests    |
+| GET    | `/api/v1/decisions/actions`             | Dump the action catalog                  |
+| GET    | `/api/v1/decisions/health`              | Detailed decision-engine health          |
+| GET    | `/health`, `/metrics`                   | Root health + Prometheus metrics         |
+
+The ML strategy is **optional** — the engine ships with a zero-dep
+`dummy` model so the `ml` and `ensemble` strategies can be exercised
+without `scikit-learn` or `torch`. To run a real model set
+`DECISION_ML_MODEL_KIND=sklearn` and point `DECISION_ML_MODEL_PATH` at a
+trained joblib estimator whose `classes_` are a subset of the action
+catalog. Config is env-driven with prefix `DECISION_` (see
 `.env.example`).
 
 ## Overview
@@ -125,15 +152,21 @@ pytest -v --cov=.
 ## Project Layout
 
 ```
-api/         FastAPI app, middleware, routes
-cache/       Redis/in-memory cache
-config/      Pydantic settings, YAML loader
-core/        Exceptions, logging, metrics, security
-entities/    Domain models (User, Session, UserProfile)
-managers/    Orchestration (input manager, session manager)
-processors/  Per-modality input processors
-services/    External service clients (speech, vision)
-storage/     Object storage (local, S3)
-tests/       Unit tests
-deploy/      Nginx, docker-entrypoint
+api/             Part 1 FastAPI app, middleware, routes
+cache/           Redis/in-memory cache
+config/          Pydantic settings, YAML loader
+core/            Exceptions, logging, metrics, security
+entities/        Domain models (User, Session, UserProfile)
+gateway/         Part 2 access/gateway layer
+intent/          Part 3.1 intent recognition service
+decision/        Part 3.2 decision engine
+managers/        Orchestration (input manager, session manager)
+processors/      Per-modality input processors
+services/        External service clients (speech, vision)
+storage/         Object storage (local, S3)
+tests/           Part 1 unit tests
+gateway_tests/   Part 2 unit tests
+intent_tests/    Part 3.1 unit tests
+decision_tests/  Part 3.2 unit tests
+deploy/          Nginx, docker-entrypoint
 ```
