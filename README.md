@@ -1,4 +1,4 @@
-# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1) + Decision Engine (Part 3.2)
+# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1) + Decision Engine (Part 3.2) + LLM Service (Part 3.3)
 
 Production-grade services for the ILBuyAI intelligent procurement decision
 system.
@@ -28,6 +28,16 @@ system.
   fallback; ships with two-tier caching, a circuit breaker around the
   ML strategy, policy guardrails (auto-approve ceiling and human-review
   threshold), and an isolated Prometheus registry.
+* **Part 3.3 (`llm.main:app`, port 8004)** — LLM service, third stage of
+  the AI Decision Hub. Unified multi-provider access layer wrapping
+  OpenAI / Anthropic / Google Gemini / Azure-OpenAI (plus a zero-dep
+  ``stub`` provider always available) behind one async REST surface.
+  Supports `single` / `fallback` / `parallel_any` / `parallel_vote` /
+  `confidence` routing strategies; ships with per-provider circuit
+  breakers, per-provider token-bucket rate limits, two-tier caching on
+  normalised request hashes, per-request cost tracking, and an isolated
+  Prometheus registry. No vendor SDKs required — all providers speak
+  their native HTTP API via ``httpx``.
 
 ### Part 3.1 endpoints
 
@@ -61,6 +71,25 @@ without `scikit-learn` or `torch`. To run a real model set
 trained joblib estimator whose `classes_` are a subset of the action
 catalog. Config is env-driven with prefix `DECISION_` (see
 `.env.example`).
+
+### Part 3.3 endpoints
+
+| Method | Path                                  | Description                           |
+|--------|---------------------------------------|---------------------------------------|
+| POST   | `/api/v1/completions`                 | Chat completion                       |
+| POST   | `/api/v1/completions/batch`           | Batch chat completion                 |
+| GET    | `/api/v1/models`                      | Dump the configured model catalog     |
+| GET    | `/api/v1/completions/health`          | Detailed LLM-service health           |
+| GET    | `/health`, `/metrics`                 | Root health + Prometheus metrics      |
+
+All providers are **optional** — set `LLM_OPENAI_API_KEY`,
+`LLM_ANTHROPIC_API_KEY`, `LLM_GOOGLE_API_KEY`, or `LLM_AZURE_API_KEY`
+(plus `LLM_AZURE_ENDPOINT`) to enable them. Without any key the stub
+provider serves every request so the service still starts up green.
+Fall-through is tracked in `llm_fallback_total{from_provider, to_provider, reason}`
+and per-provider circuit state is visible in
+`llm_circuit_state{provider}`. Config is env-driven with prefix `LLM_`
+(see `.env.example`).
 
 ## Overview
 
@@ -160,6 +189,7 @@ entities/        Domain models (User, Session, UserProfile)
 gateway/         Part 2 access/gateway layer
 intent/          Part 3.1 intent recognition service
 decision/        Part 3.2 decision engine
+llm/             Part 3.3 LLM service (multi-provider router)
 managers/        Orchestration (input manager, session manager)
 processors/      Per-modality input processors
 services/        External service clients (speech, vision)
@@ -168,5 +198,6 @@ tests/           Part 1 unit tests
 gateway_tests/   Part 2 unit tests
 intent_tests/    Part 3.1 unit tests
 decision_tests/  Part 3.2 unit tests
+llm_tests/       Part 3.3 unit tests
 deploy/          Nginx, docker-entrypoint
 ```

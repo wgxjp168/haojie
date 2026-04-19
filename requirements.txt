@@ -50,3 +50,11 @@ pytest-cov==5.0.0
 # DECISION_ML_MODEL_KIND=sklearn + DECISION_ML_MODEL_PATH=/path/to/model.joblib
 # scikit-learn==1.5.2
 # joblib==1.4.2
+
+# --- Part 3.3 LLM service: optional provider dependencies ---------------
+# LLM service ships with a zero-dep ``stub`` provider. To light up real
+# providers, set the matching LLM_*_API_KEY env vars. httpx above handles
+# all HTTP calls to OpenAI / Anthropic / Google / Azure (no vendor SDKs
+# required). Install ``brotli`` below to accept brotli-compressed
+# completion responses from providers that send them.
+# brotli==1.1.0
