@@ -1,4 +1,4 @@
-.PHONY: help install dev dev-gateway dev-intent dev-decision dev-llm test test-gateway test-intent test-decision test-llm lint run run-gateway run-intent run-decision run-llm docker-build docker-up docker-down clean
+.PHONY: help install dev dev-gateway dev-intent dev-decision dev-llm dev-report test test-gateway test-intent test-decision test-llm test-report lint run run-gateway run-intent run-decision run-llm run-report docker-build docker-up docker-down clean
 
 PYTHON ?= python3
 PORT ?= 8000
@@ -6,6 +6,7 @@ GW_PORT ?= 8001
 INTENT_PORT ?= 8002
 DECISION_PORT ?= 8003
 LLM_PORT ?= 8004
+REPORT_PORT ?= 8005
 
 help:
 	@echo "Targets:"
@@ -15,16 +16,19 @@ help:
 	@echo "  dev-intent     Run Part 3.1 intent service with reload at :$(INTENT_PORT)"
 	@echo "  dev-decision   Run Part 3.2 decision engine with reload at :$(DECISION_PORT)"
 	@echo "  dev-llm        Run Part 3.3 LLM service with reload at :$(LLM_PORT)"
+	@echo "  dev-report     Run Part 3.4 report service with reload at :$(REPORT_PORT)"
 	@echo "  run            Run Part 1 in production mode at :$(PORT)"
 	@echo "  run-gateway    Run Part 2 in production mode at :$(GW_PORT)"
 	@echo "  run-intent     Run Part 3.1 in production mode at :$(INTENT_PORT)"
 	@echo "  run-decision   Run Part 3.2 in production mode at :$(DECISION_PORT)"
 	@echo "  run-llm        Run Part 3.3 in production mode at :$(LLM_PORT)"
-	@echo "  test           Run the full test suite (parts 1, 2, 3.1, 3.2, 3.3)"
+	@echo "  run-report     Run Part 3.4 in production mode at :$(REPORT_PORT)"
+	@echo "  test           Run the full test suite (parts 1, 2, 3.1, 3.2, 3.3, 3.4)"
 	@echo "  test-gateway   Run only gateway tests"
 	@echo "  test-intent    Run only intent tests"
 	@echo "  test-decision  Run only decision-engine tests"
 	@echo "  test-llm       Run only LLM-service tests"
+	@echo "  test-report    Run only report-service tests"
 	@echo "  lint           Basic syntax check of every .py file"
 	@echo "  docker-build   Build production image"
 	@echo "  docker-up      Start stack via docker compose"
@@ -49,6 +53,9 @@ dev-decision:
 dev-llm:
 	$(PYTHON) -m uvicorn llm.main:app --reload --host 0.0.0.0 --port $(LLM_PORT)
 
+dev-report:
+	$(PYTHON) -m uvicorn report.main:app --reload --host 0.0.0.0 --port $(REPORT_PORT)
+
 run:
 	$(PYTHON) -m uvicorn api.main:app --host 0.0.0.0 --port $(PORT) --workers 4
 
@@ -64,8 +71,11 @@ run-decision:
 run-llm:
 	$(PYTHON) -m uvicorn llm.main:app --host 0.0.0.0 --port $(LLM_PORT) --workers 2
 
+run-report:
+	$(PYTHON) -m uvicorn report.main:app --host 0.0.0.0 --port $(REPORT_PORT) --workers 2
+
 test:
-	$(PYTHON) -m pytest tests gateway_tests intent_tests decision_tests llm_tests -v
+	$(PYTHON) -m pytest tests gateway_tests intent_tests decision_tests llm_tests report_tests -v
 
 test-gateway:
 	$(PYTHON) -m pytest gateway_tests -v
@@ -78,6 +88,9 @@ test-decision:
 
 test-llm:
 	$(PYTHON) -m pytest llm_tests -v
+
+test-report:
+	$(PYTHON) -m pytest report_tests -v
 
 lint:
 	$(PYTHON) -c "import ast, pathlib; [ast.parse(p.read_text()) for p in pathlib.Path('.').rglob('*.py') if '.venv' not in str(p)]; print('syntax ok')"

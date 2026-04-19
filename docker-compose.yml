@@ -217,7 +217,54 @@ services:
       retries: 3
       start_period: 20s
 
+  report:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REPORT_ENV: ${REPORT_ENV:-production}
+      REPORT_LOG_LEVEL: ${REPORT_LOG_LEVEL:-INFO}
+      REPORT_REDIS_URL: redis://redis:6379/5
+      REPORT_DEFAULT_FORMAT: ${REPORT_DEFAULT_FORMAT:-markdown}
+      REPORT_DEFAULT_AUDIENCE: ${REPORT_DEFAULT_AUDIENCE:-technical}
+      REPORT_DEFAULT_LANGUAGE: ${REPORT_DEFAULT_LANGUAGE:-zh-CN}
+      REPORT_STORAGE_BACKENDS: ${REPORT_STORAGE_BACKENDS:-memory,local}
+      REPORT_STORAGE_LOCAL_PATH: /app/storage/reports
+      REPORT_S3_BUCKET: ${REPORT_S3_BUCKET:-}
+      REPORT_S3_REGION: ${REPORT_S3_REGION:-}
+      REPORT_S3_ENDPOINT_URL: ${REPORT_S3_ENDPOINT_URL:-}
+      REPORT_S3_ACCESS_KEY: ${REPORT_S3_ACCESS_KEY:-}
+      REPORT_S3_SECRET_KEY: ${REPORT_S3_SECRET_KEY:-}
+      REPORT_API_KEY_REQUIRED: ${REPORT_API_KEY_REQUIRED:-false}
+      REPORT_API_KEYS: ${REPORT_API_KEYS:-}
+      REPORT_CORS_ORIGINS: ${REPORT_CORS_ORIGINS:-*}
+    ports:
+      - "${REPORT_PORT:-8005}:8005"
+    volumes:
+      - report_storage:/app/storage/reports
+    command: [
+      "gunicorn", "report.main:app",
+      "--worker-class", "uvicorn.workers.UvicornWorker",
+      "--workers", "2",
+      "--bind", "0.0.0.0:8005",
+      "--timeout", "60",
+      "--graceful-timeout", "30",
+      "--access-logfile", "-",
+      "--error-logfile", "-"
+    ]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
 volumes:
   redis_data:
   app_storage:
   app_logs:
+  report_storage:

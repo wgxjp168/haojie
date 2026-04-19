@@ -58,3 +58,9 @@ pytest-cov==5.0.0
 # required). Install ``brotli`` below to accept brotli-compressed
 # completion responses from providers that send them.
 # brotli==1.1.0
+
+# --- Part 3.4 report service: optional storage dependencies --------------
+# Report service ships with zero-dep memory + local filesystem backends.
+# To enable the S3 backend set ``REPORT_STORAGE_BACKENDS`` to include
+# ``s3`` and install ``boto3``. The boto3 install above (for Part 1) is
+# re-used automatically when S3 is enabled.

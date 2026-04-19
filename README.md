@@ -1,4 +1,4 @@
-# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1) + Decision Engine (Part 3.2) + LLM Service (Part 3.3)
+# ILBuyAI — Input Processor (Part 1) + Gateway (Part 2) + Intent Service (Part 3.1) + Decision Engine (Part 3.2) + LLM Service (Part 3.3) + Report Service (Part 3.4)
 
 Production-grade services for the ILBuyAI intelligent procurement decision
 system.
@@ -38,6 +38,16 @@ system.
   normalised request hashes, per-request cost tracking, and an isolated
   Prometheus registry. No vendor SDKs required — all providers speak
   their native HTTP API via ``httpx``.
+* **Part 3.4 (`report.main:app`, port 8005)** — Report service, final
+  stage of the AI Decision Hub. Consumes intent (Part 3.1) + decision
+  (Part 3.2) + optional LLM narrative (Part 3.3) and renders a bilingual
+  audit report in one of four formats (`markdown` / `html` / `json` /
+  `text`) for one of three audiences (`executive` / `technical` /
+  `customer`). Persists the rendered report via a pluggable storage
+  fan-out (memory + local filesystem always available, S3 opt-in via
+  `boto3`). Ships with two-tier caching, per-backend circuit breakers,
+  and an isolated Prometheus registry. Zero external template
+  dependencies (no Jinja2 required).
 
 ### Part 3.1 endpoints
 
@@ -90,6 +100,26 @@ Fall-through is tracked in `llm_fallback_total{from_provider, to_provider, reaso
 and per-provider circuit state is visible in
 `llm_circuit_state{provider}`. Config is env-driven with prefix `LLM_`
 (see `.env.example`).
+
+### Part 3.4 endpoints
+
+| Method | Path                                       | Description                               |
+|--------|--------------------------------------------|-------------------------------------------|
+| POST   | `/api/v1/reports/generate`                 | Render one report                         |
+| POST   | `/api/v1/reports/generate/batch`           | Render a batch of reports                 |
+| GET    | `/api/v1/reports/templates/list`           | Dump the template catalog                 |
+| GET    | `/api/v1/reports/health`                   | Detailed report-service health            |
+| GET    | `/api/v1/reports/{report_id}`              | Retrieve a previously-stored report       |
+| DELETE | `/api/v1/reports/{report_id}`              | Remove a stored report                    |
+| GET    | `/health`, `/metrics`                      | Root health + Prometheus metrics          |
+
+All renderers ship built-in with no extra dependency. Storage backends
+are selected via `REPORT_STORAGE_BACKENDS` (comma-separated list of
+`memory`, `local`, `s3`). The S3 backend is opt-in and silently reports
+`available=false` when `boto3` or credentials are missing so deployments
+can roll it out incrementally. Per-backend circuit state is exposed as
+`report_circuit_state{backend}`. Config is env-driven with prefix
+`REPORT_` (see `.env.example`).
 
 ## Overview
 
@@ -190,6 +220,7 @@ gateway/         Part 2 access/gateway layer
 intent/          Part 3.1 intent recognition service
 decision/        Part 3.2 decision engine
 llm/             Part 3.3 LLM service (multi-provider router)
+report/          Part 3.4 report service (renderers + storage)
 managers/        Orchestration (input manager, session manager)
 processors/      Per-modality input processors
 services/        External service clients (speech, vision)
@@ -199,5 +230,6 @@ gateway_tests/   Part 2 unit tests
 intent_tests/    Part 3.1 unit tests
 decision_tests/  Part 3.2 unit tests
 llm_tests/       Part 3.3 unit tests
+report_tests/    Part 3.4 unit tests
 deploy/          Nginx, docker-entrypoint
 ```
